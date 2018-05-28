@@ -3,8 +3,7 @@
 pthread_key_t login_key;
 
 void socket_puts(int socket, char* message) {
-    int res = send(socket, message, strlen(message), MSG_NOSIGNAL);
-    if(!res) exit(EXIT_FAILURE);
+    send(socket, message, strlen(message), MSG_NOSIGNAL);
 }
 
 void session(int socket) {
@@ -170,13 +169,18 @@ int write_new_message_to_chat_file(int socket, char* chat_name, char* message, c
     return 0;
 }
 
+int check_connection(int socket) {
+    int resp = send(socket, "", 1, MSG_NOSIGNAL);
+    return resp != -1;
+}
+
 void* listen_for_new_messages(void* _chat_data) {
     chat_data* ch_data = (chat_data*)(_chat_data);
     char* chat_file_path = (char*)malloc(sizeof(char)*40);
     stpcpy(chat_file_path, "./chats/\0");
     strcat(chat_file_path, ch_data->chat_name);
     int last_message = 1;
-    while(1) {
+    while(check_connection(ch_data->socket)) {
         FILE* chat_file = fopen(chat_file_path, "r");
         char* line = (char*)malloc(sizeof(char) * 284);
         memset(line, 0, sizeof(char) * 284);
@@ -185,8 +189,9 @@ void* listen_for_new_messages(void* _chat_data) {
             message_index++;
             continue;
         }
+        puts(line);
         fclose(chat_file);
-        char login[32];
+        char login[33];
         memset(login, 0, 32);
         int i;
         for(i=0; line[i]!=':' && i<32; i++){
@@ -262,10 +267,16 @@ char* create_room(int socket) {
     stpcpy(chat_file_path, "./chats/\0");
     strcat(chat_file_path, chat_name);
 
+    if(access(chat_file_path, F_OK) != -1) {
+        socket_puts(socket, "Chat exists\n");
+        free(chat_file_path);
+        return NULL;
+    }
+
     FILE* new_chat_file = fopen(chat_file_path, "w");
     free(chat_file_path);
     char* login = (char*)pthread_getspecific(login_key);
-    fprintf(new_chat_file, "\n***************\n%s created chat %s\n***************\n", login, chat_name);
+    fprintf(new_chat_file, "%s: *************** created chat %s***************\n", login, chat_name);
     fclose(new_chat_file);
 
     char* chat_pass_file_path = (char*)malloc(sizeof(char)*44);
@@ -334,7 +345,13 @@ int sign_in(int socket, char* login) {
     char* user_file_path = (char*)malloc(sizeof(char)*40);
     stpcpy(user_file_path, "./users/\0");
     strcat(user_file_path, input_login);
-    
+ 
+    if(access(user_file_path, F_OK) != -1) {
+        socket_puts(socket, "User exists\n");
+        free(user_file_path);
+        return 1;
+    }
+
     FILE* new_user_file = fopen(user_file_path, "w");
     free(user_file_path);
     fprintf(new_user_file, "%s", password);

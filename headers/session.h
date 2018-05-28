@@ -7,6 +7,8 @@ typedef struct {
 }chat_data;
 
 void socket_puts(int socket, char* message);
+int check_connection(int socket);
+
 void session(int socket);
 void greet(int socket);
 

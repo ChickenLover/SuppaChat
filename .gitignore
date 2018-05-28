@@ -1,2 +1,4 @@
 *.swp
-build/server
+build/
+obj/
+
