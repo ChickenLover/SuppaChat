@@ -9,6 +9,7 @@ typedef struct {
 void socket_puts(int socket, char* message);
 int check_connection(int socket);
 
+void init_keys();
 void session(int socket);
 void greet(int socket);
 

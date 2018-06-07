@@ -1,17 +1,21 @@
 #include "server.h"
 
 pthread_key_t login_key;
+pthread_once_t once_check=PTHREAD_ONCE_INIT;
 
 void socket_puts(int socket, char* message) {
     send(socket, message, strlen(message), MSG_NOSIGNAL);
 }
 
-void session(int socket) {
+void init_keys() {
     pthread_key_create(&login_key, NULL);
+}
+
+void session(int socket) {
+    pthread_once(&once_check, init_keys);
     greet(socket);
     login_menu(socket);
     socket_puts(socket, "Goodbye!\n");
-    pthread_key_delete(login_key);
 }
 
 void greet(int socket) {
@@ -189,7 +193,6 @@ void* listen_for_new_messages(void* _chat_data) {
             message_index++;
             continue;
         }
-        puts(line);
         fclose(chat_file);
         char login[33];
         memset(login, 0, 32);
@@ -218,6 +221,7 @@ int chat_interface(int socket, char* chat_name) {
     socket_puts(socket, "*****\n\
 ***********************************\n");
     char* login = (char*)pthread_getspecific(login_key);
+    puts(login);
     chat_data* ch_data = (chat_data*)malloc(sizeof(chat_data));
     ch_data->login = login;
     ch_data->chat_name = chat_name;
